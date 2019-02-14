@@ -1,0 +1,20 @@
+## In my knowledge
+
+# Goal 
+    # buffer overflow detection
+    # format string detection
+    # taint analysis 
+
+# Write Code
+The only file I modified : ./source/tools/SimpleExamples/icount.cpp
+    $ vi ./source/tools/SimpleExamples/icount.cpp
+
+# compilation 
+make in  ./source/tools/
+    $ cd ./source/tools/
+    $ make
+
+# Run (dynamic instrumentation)
+    $ ./pin -t ./source/tools/SimpleExamples/obj-Intel64/icount.so -- ./vuln/bufovfl_w_check
+   ($ ./pin -t ./obj-Intel64/icount.so -- ./vuln/bufovfl_w_check ## because I symlink it here. ) 
+
