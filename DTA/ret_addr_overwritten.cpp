@@ -65,23 +65,55 @@ INT32 Usage()
 
 /* ===================================================================== */
 
-VOID docount()
+VOID detect_read(CONTEXT* ctx)
 {
+    string dummy = "in detect_read" ;
+    UINT32 syscall_no, fd, buf, size ;
+    // read(fd, buf, size)
+    
+    // cout << "in detect_read" << endl;
+    PIN_GetContextRegval(ctx, REG_RAX, reinterpret_cast<UINT8*>(&syscall_no));
+    PIN_GetContextRegval(ctx, REG_RDI, reinterpret_cast<UINT8*>(&fd));
+    PIN_GetContextRegval(ctx, REG_RSI, reinterpret_cast<UINT8*>(&buf));
+    PIN_GetContextRegval(ctx, REG_RDX, reinterpret_cast<UINT8*>(&size));
+    if (syscall_no == 0) {
+        cout << " read( " << fd << ", " << buf << ", " << size << " ) ;" << endl ;
+    }
     ins_count++;
+}
+
+/* ===================================================================== */
+VOID get_stack_address()
+{
+
+    cout << "not implemented yet \n" << endl;
+
+
+
 }
 
 /* ===================================================================== */
 
 VOID Instruction(INS ins, VOID *v)
 {
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_END);
+    // if ( first_push_rbp ) {
+    //     
+    // }
+
+    if ( INS_IsSyscall(ins) ) {
+        // size_t val ;
+        // PIN_GetContextRegval((CONTEXT *) IARG_CONTEXT, REG_RAX, (uint8_t *) &val);
+        // cout << "raxval is " << val << endl ; 
+        cout << "is syscall" << endl;
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)detect_read, IARG_CONTEXT, IARG_END);
+    }
 }
 
 /* ===================================================================== */
 
 VOID Fini(INT32 code, VOID *v)
 {
-    cerr <<  "Count " << ins_count  << endl;
+    cerr <<  "Syscall Count " << ins_count  << endl;
     
 }
 

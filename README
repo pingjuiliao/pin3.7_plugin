@@ -1,20 +1,65 @@
 ## In my knowledge
+#####################
+## My Plugin List ##
+###################
 
-# Goal 
+## dynamic taint analysis   
     # buffer overflow detection
     # format string detection
     # taint analysis 
 
-# Write Code
+
+
+#############
+## Steps ###
+###########
+
+# Step I  : Write Code
 The only file I modified : ./source/tools/SimpleExamples/icount.cpp
     $ vi ./source/tools/SimpleExamples/icount.cpp
 
-# compilation 
+# Step II : compilation 
 make in  ./source/tools/
-    $ cd ./source/tools/
-    $ make
-
-# Run (dynamic instrumentation)
+    $ cd ./source/tools/SimpleExamples
+    $ make ./obj-Intel64/MyNewPlugin.so     ## from MyNewPlugin in current list
+    
+# Step III: Run (dynamic instrumentation)
     $ ./pin -t ./source/tools/SimpleExamples/obj-Intel64/icount.so -- ./vuln/bufovfl_w_check
    ($ ./pin -t ./obj-Intel64/icount.so -- ./vuln/bufovfl_w_check ## because I symlink it here. ) 
+
+
+################
+## Build up tools
+#############
+
+$ cp -r $(PIN_ROOT)/source/tools/MyPinTools AnyDirectoryYouWant
+$ vi AnyDirectoryYouWant/makefile.rules
+...
+ TOOL_ : MyNewTool
+...
+$ vi MyNewTool.cpp
+...
+#include "pin.H"
+...
+$ make PIN_ROOT=${PIN_ROOT} 
+$ # The target will be at AnyDirectoryYouWant/obj-intel64/MyNewTools.so
+
+################
+## My way for using simple command "make"
+#############
+$ cd ${PIN_ROOT}
+$ ./setup
+## setting up environment variable ${PIN_ROOT} in ~/.bashrc
+## setting up    makefile config   $(PIN_ROOT) in ${PIN_ROOT}/source/tools/Config/makefile.config
+$ cd <path to AnyDirectoryYouWant>
+$ make                                ## : )
+
+################
+### Files I created
+############ 
+-- ./DTA/*
+-- ./README
+-- ./setup.sh
+-- ./vuln/*              == vulnerable binaries
+-- ./
 
