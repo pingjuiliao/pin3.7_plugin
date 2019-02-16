@@ -60,6 +60,6 @@ $ make                                ## : )
 -- ./DTA/*
 -- ./README
 -- ./setup.sh
--- ./vuln/*              == vulnerable binaries
--- ./
+-- ./bin/vuln/*              == vulnerable binaries
+-- ./bin/test/*              == some c tests for learning assembly
 

@@ -34,13 +34,18 @@ END_LEGAL */
 
 #include "pin.H"
 #include <iostream>
+#include <string>
+#include <unordered_map>
+#define MAP_SIZE
 
 /* ===================================================================== */
 /* Global Variables */
 /* ===================================================================== */
 
 UINT64 ins_count = 0;
-
+UINT64 saved_rip_reference = 0;
+unordered_map<UINT64, bool> taint_map; // byte-level taint
+// unordered_set failed .....
 /* ===================================================================== */
 /* Commandline Switches */
 /* ===================================================================== */
@@ -64,11 +69,27 @@ INT32 Usage()
 }
 
 /* ===================================================================== */
+VOID taint_check(CONTEXT* ctx)
+{
+    UINT64 rsp ;
+    PIN_GetContextRegval(ctx, REG_RSP, reinterpret_cast<UINT8*>(&rsp));
+
+    for ( size_t i = 0 ; i < sizeof(rsp) ; ++i ) {
+        if ( taint_map[rsp + i] ) {
+            cout << "Overflow detected !!! " << endl;
+            cout << "Raising the flag !!!! " << endl;
+            return ;
+        }
+    }
+
+
+}
+/* ===================================================================== */
 
 VOID detect_read(CONTEXT* ctx)
 {
-    string dummy = "in detect_read" ;
-    UINT32 syscall_no, fd, buf, size ;
+    // string dummy = "in detect_read" ;
+    UINT64 syscall_no, fd, buf, size ;
     // read(fd, buf, size)
     
     // cout << "in detect_read" << endl;
@@ -76,18 +97,22 @@ VOID detect_read(CONTEXT* ctx)
     PIN_GetContextRegval(ctx, REG_RDI, reinterpret_cast<UINT8*>(&fd));
     PIN_GetContextRegval(ctx, REG_RSI, reinterpret_cast<UINT8*>(&buf));
     PIN_GetContextRegval(ctx, REG_RDX, reinterpret_cast<UINT8*>(&size));
-    if (syscall_no == 0) {
+    if (syscall_no == 0 && fd == 0 ) {
+        // this is a read(...) from stdin
         cout << " read( " << fd << ", " << buf << ", " << size << " ) ;" << endl ;
+        for ( UINT64 i = 0 ; i < size ; ++i ) {
+            // buf + i == address 
+            taint_map[buf + i] = true ; // true for tainted !!
+        }
     }
     ins_count++;
 }
 
 /* ===================================================================== */
-VOID get_stack_address()
+VOID get_saved_rip_reference(CONTEXT* ctx)
 {
-
-    cout << "not implemented yet \n" << endl;
-
+     
+    PIN_GetContextRegval(ctx, REG_RSP, reinterpret_cast<UINT8*>(&saved_rip_reference));
 
 
 }
@@ -96,16 +121,17 @@ VOID get_stack_address()
 
 VOID Instruction(INS ins, VOID *v)
 {
-    // if ( first_push_rbp ) {
-    //     
-    // }
-
+    
     if ( INS_IsSyscall(ins) ) {
         // size_t val ;
         // PIN_GetContextRegval((CONTEXT *) IARG_CONTEXT, REG_RAX, (uint8_t *) &val);
         // cout << "raxval is " << val << endl ; 
-        cout << "is syscall" << endl;
+        // cout << "is syscall" << endl;
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)detect_read, IARG_CONTEXT, IARG_END);
+    }
+    if ( INS_IsRet(ins) ) {
+    
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) taint_check, IARG_CONTEXT, IARG_END);
     }
 }
 
@@ -113,8 +139,8 @@ VOID Instruction(INS ins, VOID *v)
 
 VOID Fini(INT32 code, VOID *v)
 {
-    cerr <<  "Syscall Count " << ins_count  << endl;
-    
+    cerr << "Syscall Count " << ins_count  << endl;
+    cerr << "saved_rip_reference 0x" << hex << saved_rip_reference << endl; 
 }
 
 /* ===================================================================== */

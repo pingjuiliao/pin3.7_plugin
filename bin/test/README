@@ -1,0 +1,11 @@
+
+
+## ${PIN_ROOT}/pin cannot hook /bin/ls ... 
+#
+#   I wonder if it's because it calls exec() internally
+#   hence :
+#          fork_exec.c
+#  
+
+
+
