@@ -33,18 +33,23 @@ END_LEGAL */
  */
 
 #include "pin.H"
+extern "C" {
+#include "xed-interface.h"
+}
 #include <iostream>
 #include <string>
 #include <unordered_map>
-#define MAP_SIZE
-
+#define TAINT true
+#define UNTAINT false
+#define BUF_SIZE 2048
 /* ===================================================================== */
 /* Global Variables */
 /* ===================================================================== */
 
 UINT64 ins_count = 0;
 UINT64 saved_rip_reference = 0;
-unordered_map<UINT64, bool> taint_map; // byte-level taint
+unordered_map<UINT64, bool> memory_taint_map; // byte-level taint
+
 // unordered_set failed .....
 /* ===================================================================== */
 /* Commandline Switches */
@@ -75,7 +80,7 @@ VOID taint_check(CONTEXT* ctx)
     PIN_GetContextRegval(ctx, REG_RSP, reinterpret_cast<UINT8*>(&rsp));
 
     for ( size_t i = 0 ; i < sizeof(rsp) ; ++i ) {
-        if ( taint_map[rsp + i] ) {
+        if ( memory_taint_map[rsp + i] ) {
             cout << "Overflow detected !!! " << endl;
             cout << "Raising the flag !!!! " << endl;
             return ;
@@ -83,6 +88,33 @@ VOID taint_check(CONTEXT* ctx)
     }
 
 
+}
+/* ===================================================================== */
+/* ===================================================================== */
+VOID register_will_be_written(VOID *ip, VOID *ea, UINT64 reg)
+{  
+    UINT64 pc = (uint64_t) ip ;
+    static const xed_state_t dstate = { XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b};
+    REG assigned_reg = (REG) reg ;
+    char buf[2048];
+
+    xed_decoded_inst_t xedd ;
+    xed_decoded_inst_zero_set_mode(&xedd, &dstate);
+    xed_uint64_t runtime_address = static_cast<xed_uint64_t>(pc);
+    xed_error_enum_t xed_code = xed_decode(&xedd, reinterpret_cast<UINT8*>(pc), 15);
+    
+    BOOL xed_ok = ( xed_code == XED_ERROR_NONE ) ;
+    if ( xed_ok ) { 
+        xed_format_context(XED_SYNTAX_ATT, &xedd, buf, 2048, runtime_address, 0, 0);
+ 
+        cout << buf << "       write to register " << REG_StringShort(assigned_reg) << endl ;
+        cout << "effective address is " << hex << ea << endl << endl;
+    }
+}
+/* ===================================================================== */
+VOID memory_will_be_written(VOID *ea, REG reg) 
+{
+    
 }
 /* ===================================================================== */
 
@@ -102,12 +134,22 @@ VOID detect_read(CONTEXT* ctx)
         cout << " read( " << fd << ", " << buf << ", " << size << " ) ;" << endl ;
         for ( UINT64 i = 0 ; i < size ; ++i ) {
             // buf + i == address 
-            taint_map[buf + i] = true ; // true for tainted !!
+            memory_taint_map[buf + i] = true ; // true for tainted !!
         }
     }
     ins_count++;
 }
 
+/* ===================================================================== */
+
+VOID decode_instruction(INS ins, string s) 
+{
+    char buf[2048];
+    xed_decoded_inst_t* xedd = INS_XedDec(ins);
+    ADDRINT addr = INS_Address(ins);
+    xed_format_context(XED_SYNTAX_ATT, xedd, buf, 2048, static_cast<UINT64>(addr), 0, 0);
+    cout << buf << " " << s <<  endl;
+}
 /* ===================================================================== */
 VOID get_saved_rip_reference(CONTEXT* ctx)
 {
@@ -121,18 +163,19 @@ VOID get_saved_rip_reference(CONTEXT* ctx)
 
 VOID Instruction(INS ins, VOID *v)
 {
-    
-    if ( INS_IsSyscall(ins) ) {
-        // size_t val ;
-        // PIN_GetContextRegval((CONTEXT *) IARG_CONTEXT, REG_RAX, (uint8_t *) &val);
-        // cout << "raxval is " << val << endl ; 
-        // cout << "is syscall" << endl;
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)detect_read, IARG_CONTEXT, IARG_END);
+    //  Logic of mem
+    if ( INS_MemoryOperandIsRead(ins, 0) ) {
+        if ( INS_IsMemoryRead(ins) ) {
+            REG assigned_reg = INS_RegW(ins, 0);
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) register_will_be_written, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_UINT64, (UINT64) assigned_reg, IARG_END);
+        } else {
+            // negative
+            decode_instruction(ins, " Is Not Memory read !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); 
+        }
+    } else if ( INS_IsMemoryRead(ins) ) {
+        decode_instruction(ins, " FALSE NEGATIVE ############################################");
     }
-    if ( INS_IsRet(ins) ) {
-    
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) taint_check, IARG_CONTEXT, IARG_END);
-    }
+
 }
 
 /* ===================================================================== */
