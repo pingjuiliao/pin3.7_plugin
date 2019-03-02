@@ -1,5 +1,0 @@
-break main
-break *linear_cpy_loop + 27
-break *linear_cpy_loop + 21
-
-
