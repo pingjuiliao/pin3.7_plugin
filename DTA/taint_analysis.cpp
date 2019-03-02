@@ -151,20 +151,44 @@ FullRegister reg_to_full_reg( REG reg )
             return FULL_REG_RBP;
         
         case REG_R8:
+        case REG_R8D:
+        case REG_R8W:
+        case REG_R8B:
             return FULL_REG_R8;
         case REG_R9:
+        case REG_R9D:
+        case REG_R9W:
+        case REG_R9B:
             return FULL_REG_R9;
         case REG_R10:
+        case REG_R10D:
+        case REG_R10W:
+        case REG_R10B:
             return FULL_REG_R10;
         case REG_R11:
+        case REG_R11D:
+        case REG_R11W:
+        case REG_R11B:
             return FULL_REG_R11;
         case REG_R12:
+        case REG_R12D:
+        case REG_R12W:
+        case REG_R12B:
             return FULL_REG_R12;
         case REG_R13:
+        case REG_R13D:
+        case REG_R13W:
+        case REG_R13B:
             return FULL_REG_R13;
         case REG_R14:
+        case REG_R14D:
+        case REG_R14W:
+        case REG_R14B:
             return FULL_REG_R14;
         case REG_R15:
+        case REG_R15D:
+        case REG_R15W:
+        case REG_R15B:
             return FULL_REG_R15;
         case REG_RSP:
         case REG_ESP:
@@ -202,7 +226,9 @@ VOID check_rip(void)
 {
     for ( USIZE i = 0 ; i < QWORD ; ++i ) {
         if ( reg_state[FULL_REG_RIP][i] ) {
-            cout << "Rip is hijacked !" << endl;
+            cout << endl;
+            cout << "Dreadful Error : " << endl;
+            cout << "   Rip is hijacked !" << endl;
             graceful_exit();
         }
     }
