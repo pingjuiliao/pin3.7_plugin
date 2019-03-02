@@ -47,7 +47,7 @@ extern "C" {
 #define TAINT8_HIGH 0x00000000ffff0000
 #define TAINT8_LOW  0x000000000000ffff
 
-
+#define DOUBLE 16
 #define QWORD 8
 #define TAINT_STATE bool
 #define TAINT true
@@ -74,6 +74,15 @@ enum FullRegister {
     FULL_REG_R15,
     FULL_REG_RSP,
     FULL_REG_RIP,
+    FULL_REG_XMM0,
+    FULL_REG_XMM1,
+    FULL_REG_XMM2,
+    FULL_REG_XMM3,
+    FULL_REG_XMM4,
+    FULL_REG_XMM5,
+    FULL_REG_XMM6,
+    FULL_REG_XMM7,
+
     FULL_REG_TOTAL_NUM,
 };
 /* ===================================================================== */
@@ -83,7 +92,7 @@ enum FullRegister {
 // is memory taint :
 unordered_map<UINT64, TAINT_STATE> memory_taint_map; // byte-level taint
 // is reg taint :
-TAINT_STATE reg_state[FULL_REG_TOTAL_NUM][QWORD] ;
+TAINT_STATE reg_state[FULL_REG_TOTAL_NUM][DOUBLE] ;
 // unordered_set failed .....
 
 /* ===================================================================== */
@@ -163,6 +172,24 @@ FullRegister reg_to_full_reg( REG reg )
         case REG_RIP:
         case REG_EIP:
             return FULL_REG_RIP;
+
+        case REG_XMM0:
+            return FULL_REG_XMM0;
+        case REG_XMM1:
+            return FULL_REG_XMM1;
+        case REG_XMM2:
+            return FULL_REG_XMM2;
+        case REG_XMM3:
+            return FULL_REG_XMM3;
+        case REG_XMM4:
+            return FULL_REG_XMM4;
+        case REG_XMM5:
+            return FULL_REG_XMM5;
+        case REG_XMM6:
+            return FULL_REG_XMM6;
+        case REG_XMM7:
+            return FULL_REG_XMM7;
+        
         default:
             return FULL_REG_NULL;
     }
@@ -217,7 +244,7 @@ VOID mem2mem(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg, CONTEXT *ctx)
 
 VOID register_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg) 
 {
-    if ( size > QWORD ) {
+    if ( size > DOUBLE ) {
         return ;
     }
     FullRegister full_reg = reg_to_full_reg((REG) reg) ;
@@ -232,7 +259,7 @@ VOID register_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg)
 /* ===================================================================== */
 VOID memory_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg) 
 {
-    if ( size > QWORD ) {
+    if ( size > DOUBLE ) {
         return ;
     }
     FullRegister full_reg = reg_to_full_reg( (REG) reg) ;
