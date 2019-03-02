@@ -1,14 +1,22 @@
 #include<stdio.h>
 #include<string.h>
+#include<unistd.h>
+
+char buf[128];
+
+void
+vuln(void) {
+    char dst[32];
+    memset(dst, 0, sizeof(dst));
+    read(0, buf, sizeof(buf));
+    strcpy(dst, buf);
+    puts(dst);
+    return ;
+}
 
 int
 main( int argc, char** argv ) {
-    char dst[50];
-    char src[100];
-    memset(dst, 0, sizeof(dst));
-    memset(src, 0, sizeof(src));
-    scanf("%s", src);
-    strcpy(dst, src);
-    
+    memset(buf, 0, sizeof(buf));
+    vuln();
     return 0;
 }
