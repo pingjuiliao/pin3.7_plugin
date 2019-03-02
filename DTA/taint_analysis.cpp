@@ -39,22 +39,147 @@ extern "C" {
 #include <iostream>
 #include <string>
 #include <unordered_map>
+
+#define REG_STATE uint64_t
+#define TAINT64 0xffffffffffffffff
+#define TAINT32 0x00000000ffffffff
+#define TAINT16 0x000000000000ffff
+#define TAINT8_HIGH 0x00000000ffff0000
+#define TAINT8_LOW  0x000000000000ffff
+
+
+#define QWORD 8
+#define TAINT_STATE bool
 #define TAINT true
 #define UNTAINT false
 
+// #define DEBUG
+
+enum FullRegister {
+    FULL_REG_NULL = 0,
+    FULL_REG_RAX,
+    FULL_REG_RBX,
+    FULL_REG_RCX,
+    FULL_REG_RDX,
+    FULL_REG_RSI,
+    FULL_REG_RDI,
+    FULL_REG_RBP,
+    FULL_REG_R8,
+    FULL_REG_R9,
+    FULL_REG_R10,
+    FULL_REG_R11,
+    FULL_REG_R12,
+    FULL_REG_R13,
+    FULL_REG_R14,
+    FULL_REG_R15,
+    FULL_REG_RSP,
+    FULL_REG_RIP,
+    FULL_REG_TOTAL_NUM,
+};
 /* ===================================================================== */
 /* Global Variables */
 /* ===================================================================== */
 
-UINT64 ins_count = 0;
-UINT64 saved_rip_reference = 0;
-unordered_map<UINT64, bool> memory_taint_map; // byte-level taint
-
+// is memory taint :
+unordered_map<UINT64, TAINT_STATE> memory_taint_map; // byte-level taint
+// is reg taint :
+TAINT_STATE reg_state[FULL_REG_TOTAL_NUM][QWORD] ;
 // unordered_set failed .....
+
 /* ===================================================================== */
 /* Commandline Switches */
 /* ===================================================================== */
 
+
+/* ===================================================================== */
+/* Make the programe Exit Gracefully */
+/* ===================================================================== */
+
+VOID graceful_exit() {
+    cout << "exiting gracefully " << endl;
+    PIN_ExitApplication(0);
+}
+
+
+
+FullRegister reg_to_full_reg( REG reg )
+{
+    switch(reg) {
+        case REG_RAX:
+        case REG_EAX:
+        case REG_AX:
+        case REG_AH:
+        case REG_AL:
+            return FULL_REG_RAX;
+        case REG_RBX:
+        case REG_EBX:
+        case REG_BX:
+        case REG_BH:
+        case REG_BL:
+            return FULL_REG_RBX;
+        case REG_RCX:
+        case REG_ECX:
+        case REG_CX:
+        case REG_CH:
+        case REG_CL:
+            return FULL_REG_RCX;
+        case REG_RDX:
+        case REG_EDX:
+        case REG_DX:
+        case REG_DH:
+        case REG_DL:
+            return FULL_REG_RDX;
+        case REG_RSI:
+        case REG_ESI:
+            return FULL_REG_RSI;
+        case REG_RDI:
+        case REG_EDI:
+            return FULL_REG_RDI;
+        
+        case REG_RBP:
+        case REG_EBP:
+        case REG_BP:
+            return FULL_REG_RBP;
+        
+        case REG_R8:
+            return FULL_REG_R8;
+        case REG_R9:
+            return FULL_REG_R9;
+        case REG_R10:
+            return FULL_REG_R10;
+        case REG_R11:
+            return FULL_REG_R11;
+        case REG_R12:
+            return FULL_REG_R12;
+        case REG_R13:
+            return FULL_REG_R13;
+        case REG_R14:
+            return FULL_REG_R14;
+        case REG_R15:
+            return FULL_REG_R15;
+        case REG_RSP:
+        case REG_ESP:
+            return FULL_REG_RSP;
+        case REG_RIP:
+        case REG_EIP:
+            return FULL_REG_RIP;
+        default:
+            return FULL_REG_NULL;
+    }
+}
+
+
+
+/* ===================================================================== */
+VOID check_rip(void)
+{
+    for ( USIZE i = 0 ; i < QWORD ; ++i ) {
+        if ( reg_state[FULL_REG_RIP][i] ) {
+            cout << "Rip is hijacked !" << endl;
+            graceful_exit();
+        }
+    }
+}
 
 /* ===================================================================== */
 /* Print Help Message                                                    */
@@ -74,30 +199,46 @@ INT32 Usage()
 }
 
 /* ===================================================================== */
-VOID taint_check(CONTEXT* ctx)
+VOID mem2mem(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg, CONTEXT *ctx)
 {
-    UINT64 rsp ;
-    PIN_GetContextRegval(ctx, REG_RSP, reinterpret_cast<UINT8*>(&rsp));
-
-    for ( size_t i = 0 ; i < sizeof(rsp) ; ++i ) {
-        if ( memory_taint_map[rsp + i] ) {
-            cout << "Overflow detected !!! " << endl;
-            cout << "Raising the flag !!!! " << endl;
-            return ;
+    REG src_deref_reg = REG_RCX;
+    REG dst_deref_reg = (REG) reg ;
+    UINT64 src_addr, dst_addr;
+    
+    PIN_GetContextRegval(ctx, src_deref_reg, reinterpret_cast<UINT8*>(&src_addr));
+    PIN_GetContextRegval(ctx, dst_deref_reg, reinterpret_cast<UINT8*>(&dst_addr));
+    for ( USIZE i = 0 ; i < size ; ++i ) {
+        if ( memory_taint_map[src_addr + i] ) {
+            memory_taint_map[dst_addr + i] = TAINT ;
         }
     }
-
-
 }
 /* ===================================================================== */
-/* ===================================================================== */
-VOID register_will_be_written(VOID *ea, REG reg) 
+
+VOID register_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg) 
 {
-    
+    if ( size > QWORD ) {
+        return ;
+    }
+    FullRegister full_reg = reg_to_full_reg((REG) reg) ;
+    for ( USIZE i = 0 ; i < size ; ++ i ) {  
+        reg_state[full_reg][i] = memory_taint_map[(UINT64) ea + i] ;
+    }
+    if ( full_reg == FULL_REG_RIP ) {
+        check_rip(); // may not return
+    }
 }
+
 /* ===================================================================== */
-VOID memory_will_be_written(VOID *ea, REG reg) 
+VOID memory_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg) 
 {
+    if ( size > QWORD ) {
+        return ;
+    }
+    FullRegister full_reg = reg_to_full_reg( (REG) reg) ;
+    for ( USIZE i = 0 ; i < size ; ++i ) {
+        memory_taint_map[(UINT64) ea + i] = reg_state[full_reg][i] ;
+    }
     
 }
 /* ===================================================================== */
@@ -117,11 +258,9 @@ VOID detect_read(CONTEXT* ctx)
         // this is a read(...) from stdin
         cout << " read( " << fd << ", " << buf << ", " << size << " ) ;" << endl ;
         for ( UINT64 i = 0 ; i < size ; ++i ) {
-            // buf + i == address 
-            memory_taint_map[buf + i] = true ; // true for tainted !!
+            memory_taint_map[buf + i] = TAINT ; // true for tainted !!
         }
     }
-    ins_count++;
 }
 
 /* ===================================================================== */
@@ -135,15 +274,7 @@ VOID decode_instruction(INS ins, string s)
     cout << buf << " " << s <<  endl;
 }
 /* ===================================================================== */
-VOID get_saved_rip_reference(CONTEXT* ctx)
-{
-     
-    PIN_GetContextRegval(ctx, REG_RSP, reinterpret_cast<UINT8*>(&saved_rip_reference));
 
-
-}
-
-/* ===================================================================== */
 
 VOID Instruction(INS ins, VOID *v)
 {
@@ -152,32 +283,45 @@ VOID Instruction(INS ins, VOID *v)
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) detect_read, IARG_CONTEXT, IARG_END);
     }
 
-    //  II : Propagate
-    if ( INS_MemoryOperandIsRead(ins, 0) ) {
+    //  II : Propogate
+    if ( INS_MemoryOperandIsRead(ins, 0) && INS_IsMemoryRead(ins) ) {
+        // MemRead, RegWrite
         REG assigned_reg = INS_RegW(ins, 0);
-        decode_instruction(ins, " >> Is Memory Read " );
-        cout << "       write to register " << REG_StringShort(assigned_reg) << endl ; 
-        // mov (%esp), 0x8048321 ??
-        // INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) register_will_be_written, IARG_MEMORYOP_EA, assigned_reg, IARG_END);  
-    } else if ( INS_MemoryOperandIsWritten(ins, 0) ) {
-        REG pulled_reg = INS_RegR(ins, INS_MaxNumRRegs(ins));
-        decode_instruction(ins, " >> Is Memory Write " );
-        cout << "       read from register " << REG_StringShort(pulled_reg) << endl;
-        // INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) , memory_will_be_written, IARG_MEMORYOP_EA, pulled_reg, IARG_END);
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) register_will_be_written, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_UINT64, (UINT64) assigned_reg, IARG_END);
+    } 
+    if ( INS_MemoryOperandIsWritten(ins, 0) && INS_IsMemoryWrite(ins) ) {
+        // MemWrite, RegRead
+        REG pulled_reg ;
+        if ( INS_Size(ins) <= 2 ) {
+            pulled_reg = INS_RegR(ins, 0) ;
+        } else {
+            pulled_reg = INS_RegR(ins, INS_MaxNumRRegs(ins) - 1);
+        }
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) memory_will_be_written, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_UINT64, (UINT64) pulled_reg, IARG_END);
     }
+    
+    if ( INS_HasRealRep(ins) && INS_IsMemoryWrite(ins) ) {
+        // rep stos 
+        REG dst_deref_reg = INS_RegR(ins, 0);
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) mem2mem, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_UINT64, (UINT64) dst_deref_reg, IARG_CONTEXT, IARG_END);
 
-    // III : Check
-    if ( INS_IsRet(ins) ) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) taint_check, IARG_CONTEXT, IARG_END);
+
     }
+    // III : Check
 }
 
 /* ===================================================================== */
 
 VOID Fini(INT32 code, VOID *v)
 {
-    cerr << "Syscall Count " << ins_count  << endl;
-    cerr << "saved_rip_reference 0x" << hex << saved_rip_reference << endl; 
+#ifdef DEBUG
+    for ( auto it = memory_taint_map.begin(); it != memory_taint_map.end(); ++it ) {
+        if ( it->second ) {
+            cout << hex << it->first << " is Tainted !!\n" ;
+        }
+    }
+#endif
+    
 }
 
 /* ===================================================================== */
@@ -190,7 +334,11 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-    
+    for ( int i = 0; i < FULL_REG_TOTAL_NUM; ++i ) {
+        for ( USIZE j = 0 ; j < QWORD ; ++j ) {
+            reg_state[i][j] = false ;
+        }
+    }
 
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);

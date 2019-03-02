@@ -91,11 +91,12 @@ VOID taint_check(CONTEXT* ctx)
 }
 /* ===================================================================== */
 /* ===================================================================== */
-VOID memory_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg) 
+VOID mem2mem(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg, CONTEXT *ctx) 
 {
     static const xed_state_t dstate = {
         XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b};
     REG pulled_reg = (REG) reg ;
+    UINT64 pulled_reg_value;
     char buf[2048];
     xed_decoded_inst_t xedd;
     xed_decoded_inst_zero_set_mode(&xedd, &dstate);
@@ -105,6 +106,9 @@ VOID memory_will_be_written(ADDRINT pc, VOID *ea, USIZE size, UINT64 reg)
     if ( xed_ok ) {
         xed_format_context(XED_SYNTAX_ATT, &xedd, buf, 2048, runtime_address, 0, 0);
         cout << buf << " read from register : " << REG_StringShort(pulled_reg) << endl;
+        PIN_GetContextRegval(ctx, pulled_reg, reinterpret_cast<UINT8*>(&pulled_reg_value));
+        cout << "dereference of " << REG_StringShort(REG_RCX) << " is " << pulled_reg_value << endl ;
+   
         cout << "effective address is " << hex << ea << " with size == " << size << endl << endl;
     }
 }
@@ -133,28 +137,11 @@ VOID Instruction(INS ins, VOID *v)
 {
 
     //  II : Propagate
-    if ( INS_MemoryOperandIsWritten(ins, 0) ) {
-        if ( INS_IsMemoryWrite(ins) ) {
-            
-            
-            REG pulled_reg ;
-            if ( INS_Size(ins) <= 2 ) {
-                pulled_reg = INS_RegR(ins, 0);
-            } else {
-                pulled_reg = INS_RegR(ins, INS_MaxNumRRegs(ins)-1);
-            }
-            // decode_instruction(ins, " >> Is Memory Write " );
-            // cout << "       read from register " << REG_StringShort(pulled_reg) << endl;
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) memory_will_be_written, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_UINT64, (UINT64) pulled_reg, IARG_END);
-        } else {
-            decode_instruction(ins, " true negative !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-        }
-    } else {
-        if ( INS_IsMemoryWrite(ins) ) {
-            decode_instruction(ins, "false negative ????????????????????????");
-        }
-    }
+    if ( INS_IsMemoryWrite(ins) && INS_HasRealRep(ins) ) {
+        REG reg = INS_RegR(ins, 0);
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) mem2mem, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_UINT64, (UINT64) reg, IARG_CONTEXT, IARG_END);  
 
+    }
 }
 
 /* ===================================================================== */

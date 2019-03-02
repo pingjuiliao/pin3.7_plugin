@@ -1,4 +1,4 @@
-bufovfl: bufovfl_w_check bufovfl_ret bufovfl_call bufovfl_strcpy bufovfl_scanf
+bufovfl: bufovfl_w_check bufovfl_ret bufovfl_call bufovfl_strcpy bufovfl_scanf bufovfl_charcpy
 bufovfl_w_check: bufovfl_w_check.c
 	gcc -m64 -o bufovfl_w_check bufovfl_w_check.c -fno-stack-protector
 bufovfl_ret: bufovfl_ret.c
@@ -11,5 +11,7 @@ bufovfl_strcpy: bufovfl_strcpy.c
 	gcc -m64 -o bufovfl_strcpy bufovfl_strcpy.c -fno-stack-protector 
 bufovfl_scanf: bufovfl_scanf.c
 	gcc -m64 -o bufovfl_scanf bufovfl_scanf.c -fno-stack-protector
+bufovfl_charcpy: bufovfl_charcpy.c
+	gcc -m64 -o bufovfl_charcpy bufovfl_charcpy.c -fno-stack-protector
 clean:
 	rm bufovfl_w_check bufovfl_ret bufovfl_jmp bufovfl_call

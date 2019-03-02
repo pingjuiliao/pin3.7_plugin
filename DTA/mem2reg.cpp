@@ -91,9 +91,8 @@ VOID taint_check(CONTEXT* ctx)
 }
 /* ===================================================================== */
 /* ===================================================================== */
-VOID register_will_be_written(VOID *ip, VOID *ea, UINT64 reg)
+VOID register_will_be_written(ADDRINT pc, VOID *ea, USIZE size,UINT64 reg)
 {  
-    UINT64 pc = (uint64_t) ip ;
     static const xed_state_t dstate = { XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b};
     REG assigned_reg = (REG) reg ;
     char buf[2048];
@@ -107,8 +106,8 @@ VOID register_will_be_written(VOID *ip, VOID *ea, UINT64 reg)
     if ( xed_ok ) { 
         xed_format_context(XED_SYNTAX_ATT, &xedd, buf, 2048, runtime_address, 0, 0);
  
-        cout << buf << "       write to register " << REG_StringShort(assigned_reg) << endl ;
-        cout << "effective address is " << hex << ea << endl << endl;
+        cout << buf << "       write to register " << REG_StringShort(assigned_reg) << " ( " << assigned_reg  << " ) " << endl ;
+        cout << "effective address is " << hex << ea << " with size == " << size << endl << endl;
     }
 }
 /* ===================================================================== */
@@ -167,13 +166,13 @@ VOID Instruction(INS ins, VOID *v)
     if ( INS_MemoryOperandIsRead(ins, 0) ) {
         if ( INS_IsMemoryRead(ins) ) {
             REG assigned_reg = INS_RegW(ins, 0);
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) register_will_be_written, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_UINT64, (UINT64) assigned_reg, IARG_END);
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) register_will_be_written, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_UINT64, (UINT64) assigned_reg, IARG_END);
         } else {
             // negative
             decode_instruction(ins, " Is Not Memory read !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); 
         }
     } else if ( INS_IsMemoryRead(ins) ) {
-        decode_instruction(ins, " FALSE NEGATIVE ############################################");
+        decode_instruction(ins, " FALSE NEGATIVE ??????");
     }
 
 }
