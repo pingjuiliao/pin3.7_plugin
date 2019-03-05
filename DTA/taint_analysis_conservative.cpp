@@ -311,27 +311,16 @@ VOID detect_read(CONTEXT* ctx)
     PIN_GetContextRegval(ctx, REG_RDX, reinterpret_cast<UINT8*>(&size));
     
     if (syscall_no == 0 && fd == 0 ) {
+        
         // this is a read(...) from stdin
-        cout << " read( " << fd << ", " << hex << buf << ", " << size << " ) == " ;
-        last_instruction_is_syscall_read = true ;
+        cout << " read( " << fd << ", " << hex << buf << ", " << size << " ) " << endl ; ;
+        
+        // last_instruction_is_syscall_read = true ;
+        
         // Taint!
-        // for ( UINT64 i = 0 ; i < size ; ++i ) {
-        //    memory_taint_map[buf + i] = TAINT ; // true for tainted !!
-        // }
-    }
-}
-
-/* ===================================================================== */
-
-
-VOID taint_pool(CONTEXT* ctx)
-{
-    UINT64 num_of_bytes_read , buf ;
-    PIN_GetContextRegval(ctx, REG_RAX, reinterpret_cast<UINT8*>(&num_of_bytes_read));
-    PIN_GetContextRegval(ctx, REG_RSI, reinterpret_cast<UINT8*>(&buf));
-    cout << "   0x" << hex << num_of_bytes_read << endl ;
-    for (UINT64 i = 0 ; i < num_of_bytes_read ; ++ i ) {
-        memory_taint_map[buf + i] = TAINT ;
+        for ( UINT64 i = 0 ; i < size ; ++i ) {
+            memory_taint_map[buf + i] = TAINT ; // true for tainted !!
+        }
     }
 }
 
@@ -354,10 +343,6 @@ VOID Instruction(INS ins, VOID *v)
     if ( INS_IsSyscall(ins) ) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) detect_read, IARG_CONTEXT, IARG_END);
     } 
-    if ( last_instruction_is_syscall_read ) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) taint_pool, IARG_CONTEXT, IARG_END);
-        last_instruction_is_syscall_read = false ;
-    }
 
     //  II : Propogate
     if ( INS_MemoryOperandIsRead(ins, 0) && INS_IsMemoryRead(ins) ) {
