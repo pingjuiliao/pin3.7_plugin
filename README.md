@@ -31,7 +31,7 @@ $ vim makefile.rules
 $ make 
 
 ```
-if this doesn't work, see the detailed setup below.
+if this doesn't work, see the detailed setup as following.
 
 ## Some advanced setups
 
