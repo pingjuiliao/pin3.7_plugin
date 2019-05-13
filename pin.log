@@ -1,4 +1,3 @@
 Pin: pin-3.7-97619-0d0c92f4f
 Copyright (c) 2003-2018, Intel Corporation. All rights reserved.
-E:  taint_analysis.cpp:354 cannot insert IPOINT_AFTER on an instruction without a fall-through path
-     144 0x00007fbea9fffc79 syscall 
+E:  Missing application name
