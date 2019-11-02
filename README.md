@@ -3,8 +3,8 @@
 ## My plugins 
 | plugins                          | Descriptions                                                            |
 |----------------------------------|-------------------------------------------------------------------------|
-| [Dynamic Taint Analysis]         | Dynamic Taint Analysis                                                  |
-| [Symbolic Execution]             | Symbolic Execution                                                      |
+| [Dynamic Taint Analysis](/DTA)   | Dynamic Taint Analysis                                                  |
+|  Symbolic Execution              | Symbolic Execution                                                      |
 
 ## To Run plugins
 
@@ -90,6 +90,4 @@ $ # The target will be at AnyDirectoryYouWant/obj-intel64/MyNewTools.so
    ./bin/test/*                     ## some c small program for learning assembly or c/c++ library
 
 ```
-
-[Dynamic Taint Analysis](/DTA)
 
