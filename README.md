@@ -4,9 +4,9 @@
 | plugins                          | Descriptions                                                            |
 |----------------------------------|-------------------------------------------------------------------------|
 | [Dynamic Taint Analysis](/DTA)   | Dynamic Taint Analysis ( Standard input )                               |
-|                                  |    must-taint analysis  : trace read() with length <max read length >   |
-|                                  |    might-taint-analysis : trace read() with length <bytes read\>        |
-|  Symbolic Execution              | Symbolic Execution                                                      |
+|                                  |    must-taint analysis  : trace sys_read() with \<max read length\>     |
+|                                  |    might-taint-analysis : trace sys_read() with \<bytes read\>          |
+|  Symbolic Execution              | Symbolic Execution   (under construction)                               |
 
 ## To Run plugins
 
