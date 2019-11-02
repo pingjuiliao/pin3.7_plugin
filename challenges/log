@@ -1,0 +1,6 @@
+seed_rand: mapped area is not at all tainted 
+atoi     : mapped area is only tainted at the first place
+
+
+some common problem : 
+    taint analysis taint all the bits with memset()

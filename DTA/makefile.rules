@@ -24,7 +24,7 @@ TEST_ROOTS :=
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
-TOOL_ROOTS := taint_analysis taint_analysis_conservative mem_read_and_written mem2reg reg2mem mem2mem
+TOOL_ROOTS := might_taint_analysis must_taint_analysis mem_read_and_written mem2reg reg2mem mem2mem
 
 # This defines the static analysis tools which will be run during the the tests. They should not
 # be defined in TEST_TOOL_ROOTS. If a test with the same name exists, it should be defined in
