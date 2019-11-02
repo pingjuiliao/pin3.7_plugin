@@ -1,8 +1,10 @@
 # Pin 3.7 plugins
 
 ## My plugins 
-    
-    DTA/obj-intel64/ret_addr_untainted.so // check if the return addr is tainted 
+| plugins                          | Descriptions                                                            |
+|----------------------------------|-------------------------------------------------------------------------|
+| [Dynamic Taint Analysis]         | Dynamic Taint Analysis                                                  |
+| [Symbolic Execution]             | Symbolic Execution                                                      |
 
 ## To Run plugins
 
@@ -89,4 +91,5 @@ $ # The target will be at AnyDirectoryYouWant/obj-intel64/MyNewTools.so
 
 ```
 
+[Dynamic Taint Analysis](/DTA)
 
